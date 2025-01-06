@@ -1,11 +1,77 @@
+import { Console } from 'console';
 
 const vscode = require('vscode');
-const inspector = require('inspector');
+const mysql = require('mysql2/promise');
+const fs = require('fs');
 
+// 数据库连接配置
+const dbConfig = {
+    host: 'localhost',
+    user: 'root',
+    password: '123456',
+    database: 'admin'
+};
+
+// 执行 SQL 文件
+async function executeSQL(filePath) {
+    if (!fs.existsSync(filePath)) {
+        vscode.window.showErrorMessage('SQL file not found!');
+        return;
+    }
+
+    const sqlContent = fs.readFileSync(filePath, 'utf-8');
+    let queries = sqlContent
+        .split(';') // 按分号分割 SQL 语句
+        .map(query => query.trim()) // 去除多余空白
+        .filter(Boolean); // 移除空白行
+
+    if (queries.length === 0) {
+        vscode.window.showErrorMessage('No valid SQL statements found!');
+        return;
+    } 
+    console.log("queries",queries)
+    const connection = await mysql.createConnection(dbConfig);
+
+    try {
+        for (let [index, query] of queries.entries()) {
+            // 检查是否有调试标记
+            if (query.includes('--debug')) {
+                console.log(`Breakpoint found at statement ${index + 1}:`);
+                // 去除 debug 标记
+                query = query.replace('--debug', '').trim();
+                await pauseForDebug(); // 暂停，等待用户输入继续
+            }
+
+            try {
+                console.log(`Executing statement ${index + 1}:`, query);
+                const [results] = await connection.query(query);
+                console.log(`Results for statement ${index + 1}:`, results);
+            } catch (err) {
+                console.error(`Error executing statement ${index + 1}:`, err.message);
+            } 
+        }
+    } finally {
+        await connection.end();
+        console.log('Connection closed.');
+    }
+}
+
+// 暂停调试，等待用户输入继续
+async function pauseForDebug() {
+    return new Promise(resolve => {
+        // 弹出一个输入框，让用户确认继续执行
+        vscode.window.showInputBox({
+            prompt: 'Press ENTER to continue to the next statement...',
+            placeHolder: 'Press ENTER to continue'
+        }).then(input => {
+            resolve(); // 当用户按下回车时，继续执行
+        });
+    });
+} 
+
+// 扩展激活时注册命令
 function activate(context) {
-    const outputChannel = vscode.window.createOutputChannel("JS Debug");
-
-    const disposable = vscode.commands.registerCommand('dd.helloWorld', async () => {
+    const disposable = vscode.commands.registerCommand('sqlDebugger.executeSQL', async () => {
         const editor = vscode.window.activeTextEditor;
 
         if (!editor) {
@@ -13,82 +79,11 @@ function activate(context) {
             return;
         }
 
-        const code = editor.document.getText(editor.selection);
-        if (!code) {
-            vscode.window.showWarningMessage('No JavaScript code selected!');
-            return;
-        }
-
-        const documentUri = editor.document.uri.toString();
-        const breakpoints = vscode.debug.breakpoints.filter(bp => bp.location.uri.toString() === documentUri);
-
-        if (breakpoints.length === 0) {
-            vscode.window.showWarningMessage("No breakpoints set in the current file!");
-            return;
-        }
-
-        const breakpointLines = breakpoints.map(bp => bp.location.range.start.line + 1);
-
-        outputChannel.appendLine(`Breakpoints set at lines: ${breakpointLines.join(', ')}`);
-
-        try {
-            const session = new inspector.Session();
-            session.connect();
-
-            session.post('Debugger.enable', () => {
-                breakpointLines.forEach(line => {
-                    console.log(line,editor.document.fileName)
-                    session.post('Debugger.setBreakpointByUrl', {
-                        lineNumber: line - 1,
-                        url: editor.document.fileName // 使用真实文件路径
-                    }, () => {
-                        outputChannel.appendLine(`Breakpoint set at line ${line}`);
-                    });
-                });
-
-                session.post('Runtime.evaluate', {
-                    expression: code,
-                    contextId: 1
-                }, (err, result) => {
-                    if (err) {
-                        outputChannel.appendLine(`Error: ${err.message}`);
-                    } else {
-                        outputChannel.appendLine(`Execution started...`);
-                    }
-                });
-            });
-               console.log("=======",breakpointLines)
-            session.on('Debugger.paused', async (message) => {
-                outputChannel.appendLine('Debugger paused at breakpoint:');
-                outputChannel.appendLine(JSON.stringify(message.params, null, 2));
-            
-                const choice = await vscode.window.showQuickPick(
-                    ['Continue', 'Step Into', 'Stop Debugging'],
-                    { placeHolder: 'What do you want to do next?' }
-                );
-            
-                if (choice === 'Continue') {
-                    session.post('Debugger.resume', () => {
-                        outputChannel.appendLine('Execution continued...');
-                    });
-                } else if (choice === 'Step Into') {
-                    session.post('Debugger.stepInto', () => {
-                        outputChannel.appendLine('Stepped into the next line...');
-                    });
-                } else if (choice === 'Stop Debugging') {
-                    session.disconnect();
-                    outputChannel.appendLine('Debugging stopped.');
-                }
-            });
-
-        } catch (err) {
-            outputChannel.appendLine(`Error: ${err.message}`);
-        }
-
-        outputChannel.show();
+        const filePath = editor.document.uri.fsPath;
+        await executeSQL(filePath);
     });
 
-    context.subscriptions.push(disposable, outputChannel);
+    context.subscriptions.push(disposable);
 }
 
 function deactivate() {}
