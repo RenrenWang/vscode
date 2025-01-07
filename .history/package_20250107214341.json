@@ -1,0 +1,32 @@
+{
+  "name": "vscode-mysql-debug-plugin",
+  "displayName": "MySQL Debug Plugin",
+  "version": "0.0.1",
+  "description": "在 VS Code 中调试执行 MySQL SQL 文件的示例插件",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Debuggers"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "debuggers": [
+      {
+        "type": "mysqlsql",                    // 自定义调试类型标识符
+        "label": "MySQL Debugger",             // 在调试配置面板中显示的名称
+        "runtime": "node",
+        "program": "./src/MySQLDebugAdapter.js", 
+        "languages": [
+          "sql"
+        ]
+      }
+    ]
+  },
+  "activationEvents": [
+    "onDebug:startSession:mysqlsql"
+  ],
+  "dependencies": {
+    "mysql2": "^3.3.0"
+  }
+}

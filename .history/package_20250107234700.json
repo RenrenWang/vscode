@@ -20,7 +20,7 @@
         "extensions": [".sql"],
         "aliases": ["SQL", "sql"]
       }
-    ],
+    ]
     "commands": [
       {
         "command": "mysql-debug.start",

@@ -14,13 +14,6 @@
   ],
   "main": "./src/extension.js",
   "contributes": {
-    "languages": [
-      {
-        "id": "sql",
-        "extensions": [".sql"],
-        "aliases": ["SQL", "sql"]
-      }
-    ],
     "commands": [
       {
         "command": "mysql-debug.start",

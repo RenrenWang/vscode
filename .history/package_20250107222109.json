@@ -10,28 +10,21 @@
     "Debuggers"
   ],
   "activationEvents": [
-    "onCommand:mysql-debug.start"
+    "onDebugResolve:mysql-debug",
+    "onDebugInitialConfigurations",
+    "onDebugDynamicConfigurations"
   ],
   "main": "./src/extension.js",
   "contributes": {
-    "languages": [
+    "breakpoints": [
       {
-        "id": "sql",
-        "extensions": [".sql"],
-        "aliases": ["SQL", "sql"]
-      }
-    ],
-    "commands": [
-      {
-        "command": "mysql-debug.start",
-        "title": "Start MySQL Debugging",
-        "category": "MySQL Debug"
+        "language": "sql"
       }
     ],
     "debuggers": [
       {
         "type": "mysql-debug",
-        "label": "MySQL Debugger",
+        "label": "MySQL Debugger RW",
         "program": "./src/mysqlDebugAdapter.js",
         "runtime": "node",
         "configurationAttributes": {
@@ -40,7 +33,7 @@
             "properties": {
               "sql": {
                 "type": "string",
-                "description": "SQL to execute"
+                "description": "SQL query to debug"
               },
               "host": {
                 "type": "string",
@@ -49,7 +42,7 @@
               },
               "user": {
                 "type": "string",
-                "description": "MySQL username"
+                "description": "root"
               },
               "password": {
                 "type": "string",
@@ -57,17 +50,13 @@
               },
               "database": {
                 "type": "string",
-                "description": "Database name"
+                "description": "MySQL database name"
               }
             }
           }
         }
       }
     ]
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "echo Compilation completed."
   },
   "dependencies": {
     "mysql2": "^3.6.0",
@@ -76,6 +65,7 @@
   },
   "devDependencies": {
     "@types/node": "^16.11.7",
-    "@types/vscode": "^1.74.0"
+    "@types/vscode": "^1.74.0",
+    "vscode": "^1.1.37"
   }
 }
